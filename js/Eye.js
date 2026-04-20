@@ -42,6 +42,15 @@ export class Eye {
     this.blinkStartTime = 0;
   }
 
+  calculateSquashFactor(distanceFromCenter, maxDistance) {
+    if (distanceFromCenter <= 0) return 1;
+
+    const normalizedDistance = Math.min(1, distanceFromCenter / maxDistance);
+
+    const stretchAmount = 0.3;
+    return 1 + normalizedDistance * stretchAmount;
+  }
+
   draw() {
     this.context.save();
 
@@ -54,58 +63,161 @@ export class Eye {
     this.context.fillStyle = "#ffffff";
     this.context.fill();
 
-    this.context.beginPath();
-    this.context.arc(
-      this.corneaX,
-      this.corneaY,
-      this.corneaRadius,
-      0,
-      Math.PI * 2,
+    const dxFromCenter = this.pupilX - this.x;
+    const dyFromCenter = this.pupilY - this.y;
+    const distanceFromCenter = Math.sqrt(
+      dxFromCenter * dxFromCenter + dyFromCenter * dyFromCenter,
     );
-    this.context.fillStyle = this.color;
-    this.context.fill();
+    const maxDistance = this.radius - this.pupilRadius;
+
+    const angleToEdge = Math.atan2(dyFromCenter, dxFromCenter);
+
+    const stretchFactor = this.calculateSquashFactor(
+      distanceFromCenter,
+      maxDistance,
+    );
+    const isStretched = stretchFactor > 1.01;
+
+    if (isStretched) {
+      const stretchedRadiusX = this.corneaRadius;
+      const stretchedRadiusY = this.corneaRadius * stretchFactor;
+
+      this.context.save();
+      this.context.translate(this.corneaX, this.corneaY);
+      this.context.rotate(angleToEdge);
+      this.context.beginPath();
+      this.context.ellipse(
+        0,
+        0,
+        stretchedRadiusX,
+        stretchedRadiusY,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = this.color;
+      this.context.fill();
+      this.context.restore();
+    } else {
+      this.context.beginPath();
+      this.context.arc(
+        this.corneaX,
+        this.corneaY,
+        this.corneaRadius,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = this.color;
+      this.context.fill();
+    }
 
     this.context.shadowBlur = this.pupilRadius;
     this.context.shadowColor = "#ffffff";
 
-    this.context.beginPath();
-    this.context.arc(
-      this.pupilX,
-      this.pupilY,
-      this.pupilRadius,
-      0,
-      Math.PI * 2,
-    );
-    this.context.fillStyle = "#000000";
-    this.context.fill();
+    if (isStretched) {
+      const stretchedPupilX = this.pupilRadius;
+      const stretchedPupilY = this.pupilRadius * stretchFactor;
+
+      this.context.save();
+      this.context.translate(this.pupilX, this.pupilY);
+      this.context.rotate(angleToEdge);
+      this.context.beginPath();
+      this.context.ellipse(
+        0,
+        0,
+        stretchedPupilX,
+        stretchedPupilY,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = "#000000";
+      this.context.fill();
+      this.context.restore();
+    } else {
+      this.context.beginPath();
+      this.context.arc(
+        this.pupilX,
+        this.pupilY,
+        this.pupilRadius,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = "#000000";
+      this.context.fill();
+    }
 
     this.context.shadowBlur = 0;
 
-    this.context.beginPath();
-    this.context.arc(
-      this.flashX,
-      this.flashY,
-      this.flashRadius,
-      0,
-      Math.PI * 2,
-    );
-    this.context.fillStyle = "white";
-    this.context.fill();
+    if (isStretched) {
+      const stretchedFlashX = this.flashRadius;
+      const stretchedFlashY = this.flashRadius * stretchFactor;
+
+      this.context.save();
+      this.context.translate(this.flashX, this.flashY);
+      this.context.rotate(angleToEdge);
+      this.context.beginPath();
+      this.context.ellipse(
+        0,
+        0,
+        stretchedFlashX,
+        stretchedFlashY,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = "white";
+      this.context.fill();
+      this.context.restore();
+    } else {
+      this.context.beginPath();
+      this.context.arc(
+        this.flashX,
+        this.flashY,
+        this.flashRadius,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = "white";
+      this.context.fill();
+    }
 
     const secondFlashRadius = this.flashRadius * 0.4;
     const secondFlashX = this.pupilX + this.flashOffsetX * 0.8;
     const secondFlashY = this.pupilY - this.flashOffsetY * 0.3;
 
-    this.context.beginPath();
-    this.context.arc(
-      secondFlashX,
-      secondFlashY,
-      secondFlashRadius,
-      0,
-      Math.PI * 2,
-    );
-    this.context.fillStyle = "rgba(255, 255, 255, 0.8)";
-    this.context.fill();
+    if (isStretched) {
+      const stretchedSecondX = secondFlashRadius;
+      const stretchedSecondY = secondFlashRadius * stretchFactor;
+
+      this.context.save();
+      this.context.translate(secondFlashX, secondFlashY);
+      this.context.rotate(angleToEdge);
+      this.context.beginPath();
+      this.context.ellipse(
+        0,
+        0,
+        stretchedSecondX,
+        stretchedSecondY,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = "rgba(255, 255, 255, 0.8)";
+      this.context.fill();
+      this.context.restore();
+    } else {
+      this.context.beginPath();
+      this.context.arc(
+        secondFlashX,
+        secondFlashY,
+        secondFlashRadius,
+        0,
+        Math.PI * 2,
+      );
+      this.context.fillStyle = "rgba(255, 255, 255, 0.8)";
+      this.context.fill();
+    }
 
     if (this.blinkProgress > 0) {
       const blinkHeight = this.radius * 2 * this.blinkProgress;
