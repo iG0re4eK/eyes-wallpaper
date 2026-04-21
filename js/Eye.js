@@ -6,7 +6,9 @@ export class Eye {
     this.color = color;
     this.context = context;
 
-    this.speed = 0.05;
+    this.speed = 2;
+
+    this.visionRadius = 200;
 
     this.pupilRadius = radius / 3.5;
     this.corneaRadius = this.pupilRadius * 1.6;
@@ -32,14 +34,20 @@ export class Eye {
     this.blinkCloseTime = (this.blinkDuration * 100) / 60;
     this.blinkOpenTime = (this.blinkDuration * 100) / 50;
 
-    this.minBlinkInterval = 1000;
-    this.maxBlinkInterval = 20000;
+    this.minBlinkInterval = 5000;
+    this.maxBlinkInterval = 30000;
     this.blinkInterval = this.getRandomInterval();
 
     this.isBlinking = false;
     this.blinkPhase = null;
     this.lastBlinkTime = Date.now();
     this.blinkStartTime = 0;
+
+    this.minRandomTargetInterval = 1000;
+    this.maxRandomTargetInterval = 10000;
+    this.randomTargetInterval = this.getRandomTargetInterval();
+    this.lastRandomTargetTime = Date.now();
+    this.hasRandomTarget = false;
   }
 
   calculateSquashFactor(distanceFromCenter, maxDistance) {
@@ -49,6 +57,46 @@ export class Eye {
 
     const stretchAmount = 0.3;
     return 1 + normalizedDistance * stretchAmount;
+  }
+
+  isMouseInVision(mouseX, mouseY) {
+    const dx = mouseX - this.x;
+    const dy = mouseY - this.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    return distance <= this.radius + this.visionRadius;
+  }
+
+  getRandomTargetInterval() {
+    return (
+      this.minRandomTargetInterval +
+      Math.random() *
+        (this.maxRandomTargetInterval - this.minRandomTargetInterval)
+    );
+  }
+
+  generateRandomTarget() {
+    const maxDistance = this.radius;
+
+    const distance = Math.random() * maxDistance;
+    const angle = Math.random() * Math.PI * 2;
+
+    const targetX = this.x + Math.cos(angle) * distance;
+    const targetY = this.y + Math.sin(angle) * distance;
+
+    return { x: targetX, y: targetY };
+  }
+
+  updateRandomTarget(now) {
+    if (now - this.lastRandomTargetTime >= this.randomTargetInterval) {
+      const newTarget = this.generateRandomTarget();
+      this.targetX = newTarget.x;
+      this.targetY = newTarget.y;
+      this.lastRandomTargetTime = now;
+      this.hasRandomTarget = true;
+
+      this.randomTargetInterval = this.getRandomTargetInterval();
+    }
   }
 
   draw() {
@@ -222,7 +270,7 @@ export class Eye {
     if (this.blinkProgress > 0) {
       const blinkHeight = this.radius * 2 * this.blinkProgress;
 
-      this.context.fillStyle = "#2f2f2f";
+      this.context.fillStyle = "#717171";
 
       this.context.fillRect(
         this.x - this.radius,
@@ -293,17 +341,32 @@ export class Eye {
     }
   }
 
-  animate() {
+  animate(mouseX, mouseY) {
     this.updateBlink();
+
+    const now = Date.now();
+
+    const canSeeMouse = this.isMouseInVision(mouseX, mouseY);
+
+    if (canSeeMouse) {
+      this.setTarget(mouseX, mouseY);
+      this.hasRandomTarget = false;
+    } else {
+      this.updateRandomTarget(now);
+    }
 
     const dx = this.targetX - this.pupilX;
     const dy = this.targetY - this.pupilY;
-
-    const distance = Math.round(Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2)));
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance > 0.1) {
-      let moveX = dx * this.speed;
-      let moveY = dy * this.speed;
+      let moveX = (dx / distance) * this.speed;
+      let moveY = (dy / distance) * this.speed;
+
+      if (distance < this.speed) {
+        moveX = dx;
+        moveY = dy;
+      }
 
       let newPupilX = this.pupilX + moveX;
       let newPupilY = this.pupilY + moveY;

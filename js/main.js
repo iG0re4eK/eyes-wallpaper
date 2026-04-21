@@ -5,13 +5,14 @@ const context = canvas.getContext("2d");
 
 let animationId = null;
 let eyes = [];
+let currentMouseX = canvas.width / 2;
+let currentMouseY = canvas.height / 2;
 
 const CONFIG = {
-  MIN_EYES: 5,
-  MAX_EYES: 15,
+  COUNT_EYES: 15,
   MIN_RADIUS: 20,
   MAX_RADIUS: 60,
-  GAP: 10,
+  GAP: 20,
   MAX_ATTEMPTS: 100,
 };
 
@@ -24,10 +25,6 @@ function getRandomColor() {
 
 function randomRange(min, max) {
   return Math.random() * (max - min) + min;
-}
-
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function isColliding(newX, newY, newRadius, existingEyes) {
@@ -56,7 +53,7 @@ function isWithinBounds(x, y, radius) {
 
 function generateEyes() {
   const newEyes = [];
-  const eyeCount = randomInt(CONFIG.MIN_EYES, CONFIG.MAX_EYES);
+  const eyeCount = CONFIG.COUNT_EYES;
 
   for (let i = 0; i < eyeCount; i++) {
     let attempts = 0;
@@ -94,7 +91,7 @@ function init() {
 }
 
 function animate() {
-  eyes.forEach((eye) => eye.animate());
+  eyes.forEach((eye) => eye.animate(currentMouseX, currentMouseY));
   draw();
   animationId = requestAnimationFrame(animate);
 }
@@ -106,21 +103,14 @@ function draw() {
 }
 
 function getMouse(e) {
-  const mouseX = e.clientX;
-  const mouseY = e.clientY;
-
-  eyes.forEach((eye) => {
-    eye.setTarget(mouseX, mouseY);
-  });
+  currentMouseX = e.clientX;
+  currentMouseY = e.clientY;
 }
 
 function clickMouse(e) {
-  const mouseX = e.clientX;
-  const mouseY = e.clientY;
-
   eyes.forEach((eye) => {
-    const dx = mouseX - eye.x;
-    const dy = mouseY - eye.y;
+    const dx = currentMouseX - eye.x;
+    const dy = currentMouseY - eye.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance <= eye.radius) {
