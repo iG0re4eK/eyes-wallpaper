@@ -6,8 +6,7 @@ export class Eye {
     this.color = color;
     this.context = context;
 
-    this.speed = 2;
-
+    this.speed = 10;
     this.visionRadius = 200;
 
     this.pupilRadius = radius / 3.5;
@@ -25,6 +24,15 @@ export class Eye {
     this.targetX = x;
     this.targetY = y;
 
+    this.visionRadiusSq = (radius + this.visionRadius) ** 2;
+    this.maxPupilMove = radius - this.pupilRadius;
+    this.maxPupilMoveSq = this.maxPupilMove ** 2;
+
+    this.rayAngles = Array.from(
+      { length: 16 },
+      (_, i) => (Math.PI * 2 * i) / 16,
+    );
+
     this.blinkProgress = 0;
     this.blinkCloseTime = 150;
     this.blinkOpenTime = 200;
@@ -33,21 +41,23 @@ export class Eye {
     this.blinkInterval = this.getRandomInterval();
     this.isBlinking = false;
     this.blinkPhase = null;
-    this.lastBlinkTime = Date.now();
+    this.lastBlinkTime = performance.now();
     this.blinkStartTime = 0;
 
     this.minRandomTargetInterval = 1000;
     this.maxRandomTargetInterval = 10000;
     this.randomTargetInterval = this.getRandomTargetInterval();
-    this.lastRandomTargetTime = Date.now();
+    this.lastRandomTargetTime = performance.now();
     this.hasRandomTarget = false;
+
+    this._tempTarget = { x: 0, y: 0 };
   }
 
   isMouseInVision(mouseX, mouseY) {
     const dx = mouseX - this.x;
     const dy = mouseY - this.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance <= this.radius + this.visionRadius;
+    const distSq = dx * dx + dy * dy;
+    return distSq <= this.visionRadiusSq;
   }
 
   getRandomTargetInterval() {
@@ -62,10 +72,9 @@ export class Eye {
     const maxDistance = this.radius;
     const distance = Math.random() * maxDistance;
     const angle = Math.random() * Math.PI * 2;
-    return {
-      x: this.x + Math.cos(angle) * distance,
-      y: this.y + Math.sin(angle) * distance,
-    };
+    this._tempTarget.x = this.x + Math.cos(angle) * distance;
+    this._tempTarget.y = this.y + Math.sin(angle) * distance;
+    return this._tempTarget;
   }
 
   updateRandomTarget(now) {
@@ -108,27 +117,23 @@ export class Eye {
     this.context.fillStyle = this.color;
     this.context.fill();
 
-    this.context.shadowBlur = this.pupilRadius;
-    this.context.shadowColor = "#ffffff";
-    const lineCount = 16;
     const lineLength = this.pupilRadius * 0.4;
     const lineWidth = this.pupilRadius * 0.1;
 
-    for (let i = 0; i < lineCount; i++) {
-      const angle = (Math.PI * 2 * i) / lineCount;
-      const startX = this.pupilX + Math.cos(angle) * this.pupilRadius;
-      const startY = this.pupilY + Math.sin(angle) * this.pupilRadius;
-      const endX =
-        this.pupilX + Math.cos(angle) * (this.pupilRadius + lineLength);
-      const endY =
-        this.pupilY + Math.sin(angle) * (this.pupilRadius + lineLength);
+    for (let i = 0; i < this.rayAngles.length; i++) {
+      const angle = this.rayAngles[i];
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const startX = this.pupilX + cosA * this.pupilRadius;
+      const startY = this.pupilY + sinA * this.pupilRadius;
+      const endX = this.pupilX + cosA * (this.pupilRadius + lineLength);
+      const endY = this.pupilY + sinA * (this.pupilRadius + lineLength);
 
       this.context.beginPath();
       this.context.moveTo(startX, startY);
       this.context.lineTo(endX, endY);
-      this.context.strokeStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(angle) * 0.1})`;
+      this.context.strokeStyle = `rgba(255, 255, 255, ${0.3 + (i % 2) * 0.1})`;
       this.context.lineWidth = lineWidth;
-      this.context.lineCap = "round";
       this.context.stroke();
     }
 
@@ -142,8 +147,6 @@ export class Eye {
     );
     this.context.fillStyle = "#000000";
     this.context.fill();
-
-    this.context.shadowBlur = 0;
 
     this.context.beginPath();
     this.context.arc(
@@ -195,7 +198,7 @@ export class Eye {
       this.isBlinking = true;
       this.blinkPhase = "closing";
       this.blinkProgress = 0;
-      this.blinkStartTime = Date.now();
+      this.blinkStartTime = performance.now();
     }
   }
 
@@ -207,7 +210,7 @@ export class Eye {
   }
 
   updateBlink() {
-    const now = Date.now();
+    const now = performance.now();
 
     if (!this.isBlinking && now - this.lastBlinkTime >= this.blinkInterval) {
       this.blink();
@@ -240,7 +243,7 @@ export class Eye {
 
   animate(mouseX, mouseY) {
     this.updateBlink();
-    const now = Date.now();
+    const now = performance.now();
     const canSeeMouse = this.isMouseInVision(mouseX, mouseY);
 
     if (canSeeMouse) {
@@ -254,9 +257,10 @@ export class Eye {
 
     const dx = this.targetX - this.pupilX;
     const dy = this.targetY - this.pupilY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distanceSq = dx * dx + dy * dy;
 
-    if (distance > 0.1) {
+    if (distanceSq > 0.01) {
+      const distance = Math.sqrt(distanceSq);
       let moveX = (dx / distance) * this.speed;
       let moveY = (dy / distance) * this.speed;
 
@@ -268,17 +272,16 @@ export class Eye {
       let newPupilX = this.pupilX + moveX;
       let newPupilY = this.pupilY + moveY;
 
-      const maxPupilMove = this.radius - this.pupilRadius;
       const fromCenterX = newPupilX - this.x;
       const fromCenterY = newPupilY - this.y;
-      const distanceFromCenter = Math.sqrt(
-        fromCenterX * fromCenterX + fromCenterY * fromCenterY,
-      );
+      const distanceFromCenterSq =
+        fromCenterX * fromCenterX + fromCenterY * fromCenterY;
 
-      if (distanceFromCenter > maxPupilMove) {
+      if (distanceFromCenterSq > this.maxPupilMoveSq) {
+        const distanceFromCenter = Math.sqrt(distanceFromCenterSq);
         const angle = Math.atan2(fromCenterY, fromCenterX);
-        newPupilX = this.x + Math.cos(angle) * maxPupilMove;
-        newPupilY = this.y + Math.sin(angle) * maxPupilMove;
+        newPupilX = this.x + Math.cos(angle) * this.maxPupilMove;
+        newPupilY = this.y + Math.sin(angle) * this.maxPupilMove;
       }
 
       this.pupilX = newPupilX;

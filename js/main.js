@@ -2,19 +2,21 @@ import { Eye } from "./Eye.js";
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
-
-let animationId = null;
-let eyes = [];
-let currentMouseX = canvas.width / 2;
-let currentMouseY = canvas.height / 2;
-
 const CONFIG = {
+  TARGET_FPS: 60,
   COUNT_EYES: 15,
   MIN_RADIUS: 20,
   MAX_RADIUS: 60,
   GAP: 20,
   MAX_ATTEMPTS: 100,
 };
+const FRAME_INTERVAL = 1000 / CONFIG.TARGET_FPS;
+
+let lastFrame = 0;
+let animationId = null;
+let eyes = [];
+let currentMouseX = canvas.width / 2;
+let currentMouseY = canvas.height / 2;
 
 function getRandomColor() {
   const hue = Math.random() * 360;
@@ -90,10 +92,15 @@ function init() {
   animate();
 }
 
-function animate() {
+function animate(currentTime) {
+  requestAnimationFrame(animate);
+
+  if (currentTime - lastFrame < FRAME_INTERVAL) {
+    return;
+  }
+  lastFrame = currentTime;
   eyes.forEach((eye) => eye.animate(currentMouseX, currentMouseY));
   draw();
-  animationId = requestAnimationFrame(animate);
 }
 
 function draw() {
