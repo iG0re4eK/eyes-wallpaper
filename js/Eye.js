@@ -51,6 +51,8 @@ export class Eye {
     this.hasRandomTarget = false;
 
     this._tempTarget = { x: 0, y: 0 };
+
+    this.isActive = true;
   }
 
   isMouseInVision(mouseX, mouseY) {
@@ -78,6 +80,8 @@ export class Eye {
   }
 
   updateRandomTarget(now) {
+    if (!this.isActive) return;
+
     if (
       now - this.lastRandomTargetTime >= this.randomTargetInterval &&
       !this.hasRandomTarget
@@ -96,6 +100,8 @@ export class Eye {
   }
 
   draw() {
+    if (!this.isActive) return;
+
     this.context.save();
     this.context.beginPath();
     this.context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -194,6 +200,7 @@ export class Eye {
   }
 
   blink() {
+    if (!this.isActive) return;
     if (!this.isBlinking) {
       this.isBlinking = true;
       this.blinkPhase = "closing";
@@ -210,6 +217,8 @@ export class Eye {
   }
 
   updateBlink() {
+    if (!this.isActive) return;
+
     const now = performance.now();
 
     if (!this.isBlinking && now - this.lastBlinkTime >= this.blinkInterval) {
@@ -242,6 +251,8 @@ export class Eye {
   }
 
   animate(mouseX, mouseY) {
+    if (!this.isActive) return;
+
     this.updateBlink();
     const now = performance.now();
     const canSeeMouse = this.isMouseInVision(mouseX, mouseY);

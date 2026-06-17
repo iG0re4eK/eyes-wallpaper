@@ -17,6 +17,10 @@ let animationId = null;
 let eyes = [];
 let currentMouseX = canvas.width / 2;
 let currentMouseY = canvas.height / 2;
+let isPageVisible = true;
+
+let lastMouseUpdate = 0;
+const MOUSE_UPDATE_INTERVAL = 16;
 
 function getRandomColor() {
   const hue = Math.random() * 360;
@@ -82,25 +86,47 @@ function generateEyes() {
 function init() {
   if (animationId) {
     cancelAnimationFrame(animationId);
+    animationId = null;
   }
 
   canvas.height = window.innerHeight;
   canvas.width = window.innerWidth;
 
-  eyes = generateEyes();
+  currentMouseX = Math.min(currentMouseX, canvas.width);
+  currentMouseY = Math.min(currentMouseY, canvas.height);
 
-  animate();
+  eyes = generateEyes();
+  lastFrame = 0;
+
+  if (isPageVisible) {
+    animationId = requestAnimationFrame(animate);
+  }
 }
 
 function animate(currentTime) {
-  requestAnimationFrame(animate);
-
-  if (currentTime - lastFrame < FRAME_INTERVAL) {
+  if (!isPageVisible) {
+    animationId = null;
     return;
   }
+
+  const timeSinceLastFrame = currentTime - lastFrame;
+  if (timeSinceLastFrame > FRAME_INTERVAL * 2) {
+    lastFrame = currentTime - FRAME_INTERVAL;
+  }
+
+  if (currentTime - lastFrame < FRAME_INTERVAL) {
+    animationId = requestAnimationFrame(animate);
+    return;
+  }
+
   lastFrame = currentTime;
-  eyes.forEach((eye) => eye.animate(currentMouseX, currentMouseY));
-  draw();
+
+  if (isPageVisible) {
+    eyes.forEach((eye) => eye.animate(currentMouseX, currentMouseY));
+    draw();
+  }
+
+  animationId = requestAnimationFrame(animate);
 }
 
 function draw() {
@@ -110,11 +136,19 @@ function draw() {
 }
 
 function getMouse(e) {
+  const now = performance.now();
+  if (now - lastMouseUpdate < MOUSE_UPDATE_INTERVAL) {
+    return;
+  }
+  lastMouseUpdate = now;
+
   currentMouseX = e.clientX;
   currentMouseY = e.clientY;
 }
 
 function clickMouse(e) {
+  if (!isPageVisible) return;
+
   eyes.forEach((eye) => {
     const dx = currentMouseX - eye.x;
     const dy = currentMouseY - eye.y;
@@ -126,7 +160,46 @@ function clickMouse(e) {
   });
 }
 
-window.addEventListener("load", init);
-window.addEventListener("resize", init);
-window.addEventListener("mousemove", (e) => getMouse(e));
-window.addEventListener("click", (e) => clickMouse(e));
+function handleVisibilityChange() {
+  isPageVisible = !document.hidden;
+
+  if (isPageVisible) {
+    lastFrame = 0;
+
+    if (!animationId) {
+      animationId = requestAnimationFrame(animate);
+    }
+
+    currentMouseX = Math.min(currentMouseX, canvas.width);
+    currentMouseY = Math.min(currentMouseY, canvas.height);
+  } else {
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+  }
+}
+
+window.addEventListener("load", () => {
+  isPageVisible = !document.hidden;
+  init();
+});
+
+window.addEventListener("resize", () => {
+  clearTimeout(window._resizeTimer);
+  window._resizeTimer = setTimeout(() => {
+    init();
+  }, 100);
+});
+
+window.addEventListener("mousemove", getMouse, { passive: true });
+window.addEventListener("click", clickMouse);
+
+document.addEventListener("visibilitychange", handleVisibilityChange);
+
+window.addEventListener("beforeunload", () => {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+});
