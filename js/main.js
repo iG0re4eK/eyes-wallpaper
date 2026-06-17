@@ -130,7 +130,7 @@ function animate(currentTime) {
 }
 
 function draw() {
-  context.fillStyle = "rgb(16, 16, 16)";
+  context.fillStyle = "rgb(67, 67, 67)";
   context.fillRect(0, 0, canvas.width, canvas.height);
   eyes.forEach((eye) => eye.draw());
 }
