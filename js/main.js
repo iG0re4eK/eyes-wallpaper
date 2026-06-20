@@ -3,7 +3,7 @@ import { Eye } from "./Eye.js";
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
 const CONFIG = {
-  TARGET_FPS: 60,
+  TARGET_FPS: 30,
   COUNT_EYES: 15,
   MIN_RADIUS: 20,
   MAX_RADIUS: 60,
@@ -130,7 +130,7 @@ function animate(currentTime) {
 }
 
 function draw() {
-  context.fillStyle = "rgb(67, 67, 67)";
+  context.fillStyle = "rgb(42, 42, 42)";
   context.fillRect(0, 0, canvas.width, canvas.height);
   eyes.forEach((eye) => eye.draw());
 }
